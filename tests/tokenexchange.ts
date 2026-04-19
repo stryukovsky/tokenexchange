@@ -19,9 +19,12 @@ describe("tokenexchange", () => {
 
   // Share mint across tests
   let mintKeypair: Keypair;
+  // Share state too
+  let stateKeypair: Keypair;
 
   it("Creates a new SPL Token Mint with correct constraints", async () => {
     mintKeypair = Keypair.generate();
+    stateKeypair = Keypair.generate();
 
     const txHash = await program.methods
       .createMint()
@@ -29,9 +32,10 @@ describe("tokenexchange", () => {
         signer: wallet.publicKey,
         mint: mintKeypair.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
+        state: stateKeypair.publicKey,
         // systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([mintKeypair])
+      .signers([mintKeypair, stateKeypair])
       .rpc();
 
     console.log("Create mint tx:", txHash);
@@ -50,6 +54,7 @@ describe("tokenexchange", () => {
       .accountsPartial({
         signer: wallet.publicKey,
         mint: mintKeypair.publicKey,
+        state: stateKeypair.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
@@ -78,6 +83,7 @@ describe("tokenexchange", () => {
         signer: wallet.publicKey,
         mint: mintKeypair.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
+        state: stateKeypair.publicKey,
       })
       .rpc();
 

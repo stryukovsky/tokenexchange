@@ -13,6 +13,10 @@ pub mod tokenexchange {
 
     pub fn create_mint(ctx: Context<CreateMint>) -> Result<()> {
         msg!("Created Mint Account: {:?}", ctx.accounts.mint.key());
+        let state = &mut ctx.accounts.state;
+        state.total_mint = 0;
+        state.mint_address = *ctx.accounts.mint.to_account_info().key;
+        state.authority = *ctx.accounts.signer.to_account_info().key;
         Ok(())
     }
 
@@ -25,7 +29,10 @@ pub mod tokenexchange {
 
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
 
-        mint_to(cpi_ctx, amount)
+        let result = mint_to(cpi_ctx, amount);
+        let state = &mut ctx.accounts.state;
+        state.total_mint += amount;
+        result
     }
 }
 
@@ -42,20 +49,36 @@ pub struct CreateMint<'info> {
         mint::freeze_authority = signer.key(),
     )]
     pub mint: InterfaceAccount<'info, Mint>,
+
+
+    #[account(
+        init, 
+        payer = signer,
+        space = State::LEN
+    )]
+    pub state: Account<'info, State>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct MintTokens<'info> {
-    #[account(mut)]
+    #[account(mut, address = state.authority)]
     pub signer: Signer<'info>,
 
     #[account(
         mut,
         mint::authority = signer.key(),
+        address = state.mint_address, 
     )]
+    // NOTE: account is validated via address = ...
     pub mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        mut
+    )]
+    pub state: Account<'info, State>,
 
     #[account(
         init_if_needed,
@@ -69,4 +92,16 @@ pub struct MintTokens<'info> {
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>, // ← Program, not Interface
     pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct State {
+    pub authority: Pubkey,
+    pub mint_address: Pubkey,
+    pub total_mint: u64,
+
+}
+
+impl State {
+    const LEN: usize = 8 + 72;
 }
