@@ -23,7 +23,7 @@ pub mod tokenexchange {
     pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
         let cpi_accounts = MintTo {
             mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.investor.to_account_info(),
+            to: ctx.accounts.investor_ata.to_account_info(),
             authority: ctx.accounts.signer.to_account_info(),
         };
 
@@ -80,14 +80,17 @@ pub struct MintTokens<'info> {
     )]
     pub state: Account<'info, State>,
 
+    /// CHECK: This is safe because we only use it to derive/verify the ATA
+    pub investor: AccountInfo<'info>,
+
     #[account(
         init_if_needed,
         payer = signer,
         associated_token::mint = mint,
-        associated_token::authority = signer,
+        associated_token::authority = investor, // this line means WHO owns the ATA
         associated_token::token_program = token_program,
     )]
-    pub investor: InterfaceAccount<'info, TokenAccount>, // ← token_interface::TokenAccount
+    pub investor_ata: InterfaceAccount<'info, TokenAccount>, // ← token_interface::TokenAccount
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>, // ← Program, not Interface
