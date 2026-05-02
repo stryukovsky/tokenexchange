@@ -3,6 +3,8 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{mint_to, MintTo, Mint, TokenAccount, TokenInterface},
 };
+use anchor_lang::solana_program::clock::Clock;
+
 
 declare_id!("3pX5NKLru1UBDVckynWQxsgnJeUN3N1viy36Gk9TSn8d");
 
@@ -32,8 +34,17 @@ pub mod tokenexchange {
         let result = mint_to(cpi_ctx, amount);
         let state = &mut ctx.accounts.state;
         state.total_mint += amount;
+        let clock = Clock::get()?;
+        let timestamp = clock.unix_timestamp;
+        let payment = Payment {
+            when: timestamp,
+            paid_amount: amount,
+            recipient_ata: *ctx.accounts.investor_ata.to_account_info().key,
+        };
+        state.payments.push(payment);
         result
     }
+
 }
 
 #[derive(Accounts)]
@@ -97,14 +108,29 @@ pub struct MintTokens<'info> {
     pub system_program: Program<'info, System>,
 }
 
+pub const MAX_PAYMENTS: usize = 10;
+
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Payment {
+    pub when: i64,
+    pub paid_amount: u64,
+    pub recipient_ata: Pubkey,
+}
+
 #[account]
 pub struct State {
     pub authority: Pubkey,
     pub mint_address: Pubkey,
     pub total_mint: u64,
-
+    pub payments: Vec<Payment>,
 }
 
 impl State {
-    const LEN: usize = 8 + 72;
+    const LEN: usize = 8 + 32 + 32 + 8 + 4 + MAX_PAYMENTS * 48;
+}
+
+#[error_code]
+pub enum ErrorCode {
+    PaymentsFull,
 }
