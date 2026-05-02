@@ -102,7 +102,20 @@ describe("tokenexchange", () => {
     // expect(Number(tokenAccount.amount)).to.equal(1_000_000);
   });
 
-  // it("Mints additional tokens and accumulates balance", async () => {
+  it("Logs the state payments", async () => {
+    const state = await program.account.state.fetch(stateKeypair.publicKey);
+    console.log("State authority:", state.authority.toBase58());
+    console.log("Total mint:", state.totalMint.toString());
+    console.log("Payments count:", state.payments.length);
+    for (const p of state.payments) {
+      console.log(
+        `  Payment: when=${p.when.toString()} amount=${p.paidAmount.toString()} ata=${p.recipientAta.toBase58()}`
+      );
+    }
+    expect(state.payments.length).to.be.greaterThan(0);
+  });
+
+// it("Mints additional tokens and accumulates balance", async () => {
   //   const amount = new BN(2_000_000); // 2 more tokens
   //
   //   await program.methods
